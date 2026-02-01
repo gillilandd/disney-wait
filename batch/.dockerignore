@@ -1,0 +1,10 @@
+node_modules
+.bun
+bun.lockb
+.env
+.env.local
+.env.*
+.git
+dist
+serviceAccountKey.json
+.DS_Store

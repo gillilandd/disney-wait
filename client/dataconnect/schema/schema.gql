@@ -1,0 +1,33 @@
+type Park @table {
+  name: String!
+  location: String!
+  description: String
+  openingTime: String
+  closingTime: String
+}
+
+type Attraction @table {
+  park: Park!
+  name: String!
+  description: String
+  minHeight: Int
+  rideType: String
+}
+
+type WaitTime @table {
+  attraction: Attraction!
+  recordedAt: Timestamp!
+  waitMinutes: Int!
+}
+
+type DailyParkAverage @table {
+  park: Park!
+  date: Date!
+  averageWaitMinutes: Int!
+}
+
+type DailyAttractionAverage @table {
+  attraction: Attraction!
+  date: Date!
+  averageWaitMinutes: Int!
+}

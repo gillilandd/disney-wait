@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  worker:
+    build: .
+    image: disney-crowd-batch:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3006:3006"
+    volumes:
+      # Mount service account file if you prefer to use GOOGLE_APPLICATION_CREDENTIALS
+      - ./serviceAccountKey.json:/run/secrets/serviceAccountKey.json:ro
+    environment:
+      - FIREBASE_SERVICE_ACCOUNT_JSON_BASE64
+      - API_URL
+      - API_KEY
+      - POLL_INTERVAL_MINUTES
+      - FIRESTORE_COLLECTION
+      - HEALTH_PORT=3006
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3006/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

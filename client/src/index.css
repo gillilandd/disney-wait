@@ -1,0 +1,233 @@
+:root {
+  --bg: #f7f9fc;
+  --card: #ffffff;
+  --muted: #6b7280;
+  --accent: #0ea5a4;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  font-family: Inter, system-ui, Arial, sans-serif;
+  margin: 0;
+  background: var(--bg);
+  color: #111;
+}
+.header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #e6edf2;
+  background: var(--card);
+}
+.logo {
+  text-decoration: none;
+  color: inherit;
+  font-weight: 600;
+}
+.container {
+  max-width: 980px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+.card {
+  background: var(--card);
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  margin-bottom: 16px;
+}
+.grid {
+  display: grid;
+  gap: 12px;
+}
+.park-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.park-card {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #eef2f6;
+  background: linear-gradient(180deg, #fff, #fbfdff);
+}
+.small {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.footer {
+  padding: 12px 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.btn {
+  display: inline-block;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: white;
+  text-decoration: none;
+}
+.link {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.calendar-day {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #eef2f6;
+  background: #fff;
+}
+
+/* Rides list styling */
+.ride-list {
+  display: grid;
+  gap: 8px;
+}
+.ride-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #eef2f6;
+  background: #fff;
+}
+.ride-row.closed {
+  opacity: 0.6;
+  background: linear-gradient(180deg, #fafafa, #fff);
+}
+.ride-name {
+  font-weight: 600;
+}
+.ride-meta {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.ride-wait {
+  font-weight: 700;
+  color: var(--accent);
+}
+.ride-closed {
+  color: #9ca3af;
+  background: #f3f4f6;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #e6e6e6;
+}
+
+/* Status icon */
+.status-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+.status-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Wait badge colors */
+.wait-badge {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: white;
+  font-weight: 700;
+}
+.wait-badge.green {
+  background: #10b981;
+} /* 0-15 */
+.wait-badge.yellow {
+  background: #f59e0b;
+} /* 16-30 */
+.wait-badge.orange {
+  background: #fb923c;
+} /* 31-50 */
+.wait-badge.red {
+  background: #ef4444;
+} /* >50 */
+
+/* Filter input */
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.filter-input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #e6edf2;
+  background: #fff;
+  font-size: 0.95rem;
+}
+.filter-count {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* Ride link */
+.ride-link {
+  color: inherit;
+  text-decoration: none;
+  display: block;
+}
+
+/* Chart styles */
+.chart {
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #eef2f6;
+  margin-bottom: 12px;
+}
+.chart svg {
+  width: 100%;
+  height: 240px;
+  display: block;
+}
+.chart .grid-line {
+  stroke: #f1f5f9;
+  stroke-width: 1;
+}
+.chart .axis-label {
+  fill: var(--muted);
+  font-size: 12px;
+}
+.chart .point {
+  fill: var(--accent);
+  stroke: #fff;
+  stroke-width: 1;
+}
+.chart .point.closed {
+  fill: #9ca3af;
+}
+.chart .no-data {
+  color: var(--muted);
+  padding: 12px;
+}
+
+/* Data table */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.data-table th,
+.data-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #eef2f6;
+}
+.data-table th {
+  font-weight: 600;
+  background-color: #f9fafb;
+}
+.data-table tbody tr:nth-child(even) {
+  background-color: #f9fafb;
+}
