@@ -265,12 +265,14 @@ export default function RideHistory() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.map((d) => (
-                    <tr key={d.timestamp}>
-                      <td>{format(new Date(d.timestamp), 'Pp')}</td>
-                      <td>{d.wait_minutes == null ? 'n/a' : `${d.wait_minutes} min`}</td>
-                    </tr>
-                  ))}
+                  {data
+                    .filter((d) => d.status !== 'CLOSED')
+                    .map((d) => (
+                      <tr key={d.timestamp}>
+                        <td>{format(new Date(d.timestamp), 'Pp')}</td>
+                        <td>{d.wait_minutes == null ? d.status : `${d.wait_minutes} min`}</td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
