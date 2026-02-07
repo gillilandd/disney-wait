@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { computeNowAveragesFromPark } from '../data/parks';
-import { useParkRealtime } from '../services/parks';
-import { format } from 'date-fns';
+import { useParkRealtime, fetchDayAverageForRide } from '../services/parks';
+import { format, isToday } from 'date-fns';
+import DateSelector from '../components/DateSelector';
+import { Ride } from '../types';
 
 function latestWaitForRide(ride: any) {
   const times = ride.wait_times ?? [];
@@ -15,15 +17,34 @@ function latestWaitForRide(ride: any) {
 
 export default function ParkDetails() {
   const { id } = useParams();
-  const { park, loading, error } = useParkRealtime(id);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const { park, loading, error } = useParkRealtime(id, selectedDate);
+  const [dayAverages, setDayAverages] = useState<Record<string, number>>({});
 
   // Filter state and derived lists (hooks must be called unconditionally)
   const [filter, setFilter] = React.useState('');
+
+  useEffect(() => {
+    if (park && !isToday(selectedDate)) {
+      const calculateAverages = async () => {
+        const averages: Record<string, number> = {};
+        for (const ride of park.rides as Ride[]) {
+          const avg = await fetchDayAverageForRide(park.id, ride.id, selectedDate);
+          averages[ride.id] = avg;
+        }
+        setDayAverages(averages);
+      };
+      calculateAverages();
+    } else {
+      setDayAverages({});
+    }
+  }, [park, selectedDate]);
+
   const allRidesSorted = React.useMemo(() => {
     const ridesWithMeta = (park?.rides ?? []).map((r: any) => {
       const l = latestWaitForRide(r);
-      const wait = l?.wait_minutes ?? null;
-      const isClosed = !l || l.wait_minutes == null || l.status === 'closed';
+      const wait = !isToday(selectedDate) ? dayAverages[r.id] : l?.wait_minutes ?? null;
+      const isClosed = !isToday(selectedDate) ? wait === 0 : !l || l.wait_minutes == null || l.status === 'closed';
       const ts = l?.timestamp ?? null;
       return { ...r, latest: l, wait, isClosed, ts };
     });
@@ -33,7 +54,7 @@ export default function ParkDetails() {
       if (a.ts && b.ts) return b.ts.localeCompare(a.ts);
       return 0;
     });
-  }, [park]);
+  }, [park, selectedDate, dayAverages]);
 
   const filteredRides = React.useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -50,23 +71,32 @@ export default function ParkDetails() {
   if (!park) return <div className="card">Park not found</div>;
 
   const now = computeNowAveragesFromPark(park);
-  const today = format(new Date(), 'PPP');
 
   return (
     <div>
       <div className="card">
         <h2>{park.name}</h2>
         <div className="small">{park.location}</div>
+        <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
         <div style={{ marginTop: 12 }}>
+          {!isToday(selectedDate) && (
+            <div style={{ marginBottom: 8, fontStyle: 'italic' }}>
+              Showing average wait times for {format(selectedDate, 'PPP')}.
+            </div>
+          )}
           <div>
-            <strong>Today's date:</strong> {today}
+            <strong>Selected date:</strong> {format(selectedDate, 'PPP')}
           </div>
-          <div style={{ marginTop: 8 }}>
-            <strong>Rides open:</strong> {now.open} / {now.total}
-          </div>
-          <div style={{ marginTop: 8 }}>
-            <strong>Average wait right now:</strong> {now.avgWait} min
-          </div>
+          {isToday(selectedDate) && (
+            <>
+              <div style={{ marginTop: 8 }}>
+                <strong>Rides open:</strong> {now.open} / {now.total}
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <strong>Average wait right now:</strong> {now.avgWait} min
+              </div>
+            </>
+          )}
         </div>
         <div style={{ marginTop: 12 }}>
           <Link className="btn" to={`/parks/${park.id}/calendar`}>
@@ -113,7 +143,10 @@ export default function ParkDetails() {
 
             return (
               <div key={r.id} className={`ride-row ${r.isClosed ? 'closed' : ''}`}>
-                <Link to={`/parks/${park.id}/rides/${r.id}`} className="ride-link">
+                <Link
+                  to={`/parks/${park.id}/rides/${r.id}?date=${format(selectedDate, 'yyyy-MM-dd')}`}
+                  className="ride-link"
+                >
                   <div>
                     <div className="ride-name">
                       <span className="status-icon" aria-hidden>
@@ -149,7 +182,13 @@ export default function ParkDetails() {
                       </span>
                       {r.name}
                     </div>
-                    <div className="ride-meta">{r.isClosed ? 'Closed' : `Updated${ts}`}</div>
+                    <div className="ride-meta">
+                      {isToday(selectedDate)
+                        ? r.isClosed
+                          ? 'Closed'
+                          : `Updated${ts}`
+                        : 'Avg Wait'}
+                    </div>
                   </div>
                 </Link>
                 <div>

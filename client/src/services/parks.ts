@@ -68,7 +68,12 @@ export async function fetchWaitTimesForRide(
 
 export async function fetchRidesForPark(
   parkId: string,
-  opts?: { waitTimes?: 'latest' | 'today' | 'month'; year?: number; month?: number }
+  opts?: {
+    waitTimes?: 'latest' | 'today' | 'month' | 'day';
+    year?: number;
+    month?: number;
+    date?: Date;
+  }
 ): Promise<Ride[]> {
   // fetch rides subcollection
   const snap = await getDocs(collection(db, 'parks', parkId, 'rides'));
@@ -84,15 +89,22 @@ export async function fetchRidesForPark(
         const start = formatISO(startOfMonth(new Date(opts.year, opts.month, 1)));
         const end = formatISO(endOfMonth(new Date(opts.year, opts.month, 1)));
         wait_times = await fetchWaitTimesForRide(parkId, d.id, { startIso: start, endIso: end });
+      } else if (opts?.waitTimes === 'day' && opts.date) {
+        const start = formatISO(startOfDay(opts.date));
+        const end = formatISO(endOfDay(opts.date));
+        wait_times = await fetchWaitTimesForRide(parkId, d.id, { startIso: start, endIso: end });
       } else {
         // default: today
-        wait_times = await fetchWaitTimesForRide(parkId, d.id);
+        const today = new Date();
+        const start = formatISO(startOfDay(today));
+        const end = formatISO(endOfDay(today));
+        wait_times = await fetchWaitTimesForRide(parkId, d.id, { startIso: start, endIso: end });
       }
 
       // If ride document had inline wait_times, and opts didn't request specific range, use inline
       if (
         (data.wait_times as WaitTimeEntry[] | undefined) &&
-        (!opts || opts.waitTimes !== 'month')
+        (!opts || (opts.waitTimes !== 'month' && opts.waitTimes !== 'day'))
       ) {
         wait_times = data.wait_times as WaitTimeEntry[];
       }
@@ -103,7 +115,10 @@ export async function fetchRidesForPark(
   return rides;
 }
 
-export async function fetchParkById(parkId: string): Promise<Park | null> {
+export async function fetchParkById(
+  parkId: string,
+  date?: Date
+): Promise<Park | null> {
   const d = await getDoc(doc(db, 'parks', parkId));
   if (!d.exists()) return null;
   const data = d.data() as any;
@@ -115,7 +130,10 @@ export async function fetchParkById(parkId: string): Promise<Park | null> {
   };
   if ((park.rides?.length ?? 0) === 0) {
     try {
-      const r = await fetchRidesForPark(parkId, { waitTimes: 'latest' });
+      const r = await fetchRidesForPark(parkId, {
+        waitTimes: date ? 'day' : 'latest',
+        date: date,
+      });
       if (r.length > 0) return { ...park, rides: r };
     } catch (e) {
       console.error('Failed to fetch rides subcollection for park', parkId, e);
@@ -187,7 +205,23 @@ export async function fetchMonthlyAverages(
   return days;
 }
 
-export function useParkRealtime(parkId?: string) {
+export async function fetchDayAverageForRide(
+  parkId: string,
+  rideId: string,
+  date: Date
+): Promise<number> {
+  const start = formatISO(startOfDay(date));
+  const end = formatISO(endOfDay(date));
+  const wait_times = await fetchWaitTimesForRide(parkId, rideId, {
+    startIso: start,
+    endIso: end,
+  });
+  if (wait_times.length === 0) return 0;
+  const total = wait_times.reduce((sum, wt) => sum + wt.wait_minutes, 0);
+  return Math.round(total / wait_times.length);
+}
+
+export function useParkRealtime(parkId?: string, date?: Date) {
   const [park, setPark] = useState<Park | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | undefined>();
@@ -218,7 +252,10 @@ export function useParkRealtime(parkId?: string) {
         // if no rides inline, fetch subcollection
         if ((p.rides?.length ?? 0) === 0) {
           try {
-            const r = await fetchRidesForPark(parkId);
+            const r = await fetchRidesForPark(parkId, {
+              waitTimes: date ? 'day' : 'latest',
+              date: date,
+            });
             if (r.length > 0) p = { ...p, rides: r };
           } catch (e) {
             console.error('Failed to fetch rides for park in realtime hook', parkId, e);
@@ -235,7 +272,7 @@ export function useParkRealtime(parkId?: string) {
     );
 
     return () => unsub();
-  }, [parkId]);
+  }, [parkId, date]);
 
   return { park, loading, error };
 }

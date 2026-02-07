@@ -1,11 +1,18 @@
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { fetchWaitTimesForRide, useParkRealtime } from '../services/parks';
 import { WaitTimeEntry } from '../types';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay, parseISO } from 'date-fns';
+import DateSelector from '../components/DateSelector';
 
 export default function RideHistory() {
   const { parkId, rideId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const dateParam = searchParams.get('date');
+  const [selectedDate, setSelectedDate] = React.useState(
+    dateParam ? parseISO(dateParam) : new Date()
+  );
+
   const { park, loading: parkLoading } = useParkRealtime(parkId);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(null);
@@ -16,11 +23,24 @@ export default function RideHistory() {
     if (!parkId || !rideId) return;
     setLoading(true);
     setError(null);
-    fetchWaitTimesForRide(parkId, rideId)
+    const start = startOfDay(selectedDate);
+    // Get the start of the NEXT day to ensure we capture all data for the selected day
+    const nextDay = new Date(selectedDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    const end = startOfDay(nextDay);
+    fetchWaitTimesForRide(parkId, rideId, {
+      startIso: start.toISOString(),
+      endIso: end.toISOString(),
+    })
       .then((rows) => setData(rows))
       .catch((e) => setError(e as Error))
       .finally(() => setLoading(false));
-  }, [parkId, rideId]);
+  }, [parkId, rideId, selectedDate]);
+
+  const handleDateChange = (date: Date) => {
+    setSelectedDate(date);
+    setSearchParams({ date: format(date, 'yyyy-MM-dd') });
+  };
 
   const ride = React.useMemo(
     () => (park?.rides ?? []).find((r: any) => r.id === rideId),
@@ -43,18 +63,28 @@ export default function RideHistory() {
   const pad = { left: 40, right: 20, top: 20, bottom: 36 };
 
   const xMin = React.useMemo(() => {
-    const d = new Date();
-    d.setHours(8, 0, 0, 0);
+    const d = startOfDay(selectedDate);
     return d.getTime();
-  }, []);
-  const xMax = React.useMemo(
-    () => (points.length ? Math.max(...points.map((p) => p.t)) : Date.now()),
-    [points]
-  );
+  }, [selectedDate]);
+  const xMax = React.useMemo(() => {
+    const d = startOfDay(selectedDate);
+    d.setHours(24, 0, 0, 0);
+    return d.getTime();
+  }, [selectedDate]);
   const yVals = React.useMemo(
     () => points.filter((p) => p.v != null).map((p) => p.v as number),
     [points]
   );
+
+  // Calculate average wait time, only counting operating periods (wait_minutes != null and status != 'closed')
+  const avgWait = React.useMemo(() => {
+    const validEntries = data.filter(
+      (entry) => entry.wait_minutes != null && entry.status !== 'closed'
+    );
+    if (validEntries.length === 0) return 0;
+    const sum = validEntries.reduce((acc, entry) => acc + (entry.wait_minutes ?? 0), 0);
+    return Math.round(sum / validEntries.length);
+  }, [data]);
   // Always show zero as baseline so charts are comparable
   const yMin = 0;
   // Ensure a reasonable top: at least 60, with a small headroom above the max sample
@@ -74,8 +104,6 @@ export default function RideHistory() {
     return pad.top + inv * (H - pad.top - pad.bottom);
   }
 
-
-
   const hours = React.useMemo(() => {
     // create hourly ticks between xMin and xMax
     const start = new Date(xMin);
@@ -88,15 +116,21 @@ export default function RideHistory() {
   return (
     <div>
       <div className="card">
-        <Link className="link" to={`/parks/${parkId}`}>
+        <Link className="link" to={`/parks/${parkId}?date=${format(selectedDate, 'yyyy-MM-dd')}`}>
           &larr; Back
         </Link>
         <h2>{ride?.name ?? `Ride ${rideId}`}</h2>
-        <div className="small">Showing wait time history for today</div>
+        <DateSelector selectedDate={selectedDate} onDateChange={handleDateChange} />
+        <div className="small">Showing wait time history for {format(selectedDate, 'PPP')}</div>
+        {!loading && !error && data.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <strong>Average wait time:</strong> {avgWait} min
+          </div>
+        )}
       </div>
 
       <div className="card">
-        <h3>Today's History</h3>
+        <h3>Wait Time History</h3>
         <div className="chart">
           {loading || parkLoading ? (
             <div className="small">Loading…</div>
@@ -140,7 +174,7 @@ export default function RideHistory() {
               {points.map((p, i) => {
                 const plotWidth = W - pad.left - pad.right;
                 // calculate bar width based on number of points. If only one, make it 10px wide.
-                const barWidth = points.length > 1 ? plotWidth / points.length * 0.8 : 10;
+                const barWidth = points.length > 1 ? (plotWidth / points.length) * 0.8 : 10;
                 const x = xOf(p.t) - barWidth / 2;
 
                 if (p.v == null) {
