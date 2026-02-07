@@ -5,11 +5,11 @@ FROM oven/bun:latest
 WORKDIR /app
 
 # Copy package manifest and lockfile first for better caching
-COPY package.json bun.lockb tsconfig.json ./
+COPY package.json bun.lock tsconfig.json ./
 
 # Copy source and other necessary files
 COPY src ./src
-COPY .env.example ./
+COPY firebase-service-account.json ./firebase-service-account.json
 
 # Install production dependencies
 RUN bun install --production --no-save
@@ -18,9 +18,9 @@ RUN bun install --production --no-save
 ENV NODE_ENV=production
 
 # Expose health port for Docker healthchecks
-EXPOSE 3000
+EXPOSE 3006
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD curl -f http://localhost:3000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD curl -f http://localhost:3006/health || exit 1
 
 # Run the app
 CMD ["bun", "run", "start"]

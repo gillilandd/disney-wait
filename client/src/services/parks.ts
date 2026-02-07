@@ -45,7 +45,11 @@ export async function fetchWaitTimesForRide(
     if (opts?.startIso || opts?.endIso) {
       const clauses: any[] = [];
       if (opts.startIso) clauses.push(where('timestamp', '>=', opts.startIso));
-      if (opts.endIso) clauses.push(where('timestamp', '<=', opts.endIso));
+      if (opts.endIso) {
+        var newEnd = new Date(opts.endIso);
+        newEnd.setDate(newEnd.getDate() + 1);
+        clauses.push(where('timestamp', '<=', newEnd.toISOString()));
+      }
       q = query(
         collection(db, 'parks', parkId, 'rides', rideId, 'wait_times'),
         ...clauses,
@@ -115,10 +119,7 @@ export async function fetchRidesForPark(
   return rides;
 }
 
-export async function fetchParkById(
-  parkId: string,
-  date?: Date
-): Promise<Park | null> {
+export async function fetchParkById(parkId: string, date?: Date): Promise<Park | null> {
   const d = await getDoc(doc(db, 'parks', parkId));
   if (!d.exists()) return null;
   const data = d.data() as any;
